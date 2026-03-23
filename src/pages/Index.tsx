@@ -19,9 +19,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
 const Index = () => {
-  const { products, categories, addToCart, toggleFavorite, favorites, loading } = useApp();
+  const { products, categories, banners, addToCart, toggleFavorite, favorites, loading } = useApp();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showSplash, setShowSplash] = useState(true);
@@ -29,7 +30,7 @@ const Index = () => {
 
   // Filter States
   const [isVegOnly, setIsVegOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('default'); // 'default', 'price-low', 'price-high', 'rating'
+  const [sortBy, setSortBy] = useState('default');
 
   const filteredProducts = useMemo(() => {
     let result = products.filter(product => {
@@ -39,7 +40,6 @@ const Index = () => {
       return matchesSearch && matchesCategory && matchesVeg;
     });
 
-    // Sorting
     if (sortBy === 'price-low') {
       result.sort((a, b) => a.price - b.price);
     } else if (sortBy === 'price-high') {
@@ -116,7 +116,6 @@ const Index = () => {
               </SheetHeader>
               
               <div className="py-6 space-y-8">
-                {/* Veg Only Toggle */}
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-base font-bold">Veg Only</Label>
@@ -129,7 +128,6 @@ const Index = () => {
                   />
                 </div>
 
-                {/* Sorting Options */}
                 <div className="space-y-4">
                   <Label className="text-base font-bold">Sort By</Label>
                   <RadioGroup value={sortBy} onValueChange={setSortBy} className="grid grid-cols-1 gap-3">
@@ -175,6 +173,28 @@ const Index = () => {
             </SheetContent>
           </Sheet>
         </div>
+
+        {/* Banners Slider */}
+        {banners.length > 0 && (
+          <div className="mt-6 px-4">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {banners.map((banner) => (
+                  <CarouselItem key={banner.id}>
+                    <div className="relative h-40 rounded-2xl overflow-hidden shadow-md">
+                      <img src={banner.image} alt={banner.title || 'Offer'} className="w-full h-full object-cover" />
+                      {banner.title && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                          <h3 className="text-white font-bold text-lg">{banner.title}</h3>
+                        </div>
+                      )}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </div>
+        )}
 
         {/* Categories */}
         <div className="mt-8 px-4">
