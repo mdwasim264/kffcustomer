@@ -11,6 +11,7 @@ interface Product {
   isVeg: boolean;
   rating: number;
   discount?: number;
+  description?: string;
 }
 
 interface CartItem extends Product {
@@ -28,6 +29,17 @@ interface Address {
 }
 
 type OrderType = 'delivery' | 'pickup' | 'dine-in';
+type OrderStatus = 'Pending' | 'Accepted' | 'Preparing' | 'Out for Delivery' | 'Delivered';
+
+interface Order {
+  id: string;
+  items: CartItem[];
+  total: number;
+  type: OrderType;
+  status: OrderStatus;
+  address?: Address;
+  date: string;
+}
 
 interface AppContextType {
   cart: CartItem[];
@@ -35,6 +47,7 @@ interface AppContextType {
   addresses: Address[];
   selectedAddress: Address | null;
   orderType: OrderType;
+  orders: Order[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
@@ -42,6 +55,7 @@ interface AppContextType {
   setOrderType: (type: OrderType) => void;
   addAddress: (address: Address) => void;
   setSelectedAddress: (address: Address) => void;
+  placeOrder: () => string;
   totalAmount: number;
   deliveryCharge: number;
 }
@@ -54,6 +68,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddressState] = useState<Address | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
+  const [orders, setOrders] = useState<Order[]>([]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -95,15 +110,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Delivery Logic: ₹150+ order par FREE, warna ₹30 charge
   const deliveryCharge = (orderType === 'delivery' && totalAmount < 150 && totalAmount > 0) ? 30 : 0;
+
+  const placeOrder = () => {
+    const newOrder: Order = {
+      id: `KFF-${Math.floor(1000 + Math.random() * 9000)}`,
+      items: [...cart],
+      total: totalAmount + deliveryCharge,
+      type: orderType,
+      status: 'Pending',
+      address: orderType === 'delivery' ? selectedAddress || undefined : undefined,
+      date: new Date().toLocaleString(),
+    };
+    setOrders(prev => [newOrder, ...prev]);
+    setCart([]);
+    return newOrder.id;
+  };
 
   return (
     <AppContext.Provider value={{ 
-      cart, favorites, addresses, selectedAddress, orderType, 
+      cart, favorites, addresses, selectedAddress, orderType, orders,
       addToCart, removeFromCart, updateQuantity, toggleFavorite, 
-      setOrderType, addAddress, setSelectedAddress,
+      setOrderType, addAddress, setSelectedAddress, placeOrder,
       totalAmount, deliveryCharge 
     }}>
       {children}

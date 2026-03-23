@@ -5,7 +5,7 @@ import { Search, Filter, Heart, Star } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 const MOCK_BANNERS = [
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
@@ -30,6 +30,7 @@ const MOCK_PRODUCTS = [
 const Index = () => {
   const { addToCart, toggleFavorite, favorites } = useApp();
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   return (
     <div className="pb-24 bg-gray-50 min-h-screen">
@@ -97,12 +98,15 @@ const Index = () => {
           {MOCK_PRODUCTS.map((product) => (
             <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 relative">
               <button 
-                onClick={() => toggleFavorite(product.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(product.id);
+                }}
                 className="absolute top-2 right-2 z-10 p-1.5 bg-white/80 backdrop-blur-sm rounded-full shadow-sm"
               >
                 <Heart size={16} className={favorites.includes(product.id) ? "fill-red-500 text-red-500" : "text-gray-400"} />
               </button>
-              <div className="h-32 overflow-hidden">
+              <div className="h-32 overflow-hidden cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>
                 <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
               </div>
               <div className="p-3">
@@ -114,13 +118,10 @@ const Index = () => {
                     <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating}
                   </span>
                 </div>
-                <h3 className="font-bold text-sm truncate">{product.name}</h3>
+                <h3 className="font-bold text-sm truncate cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
                 <div className="flex items-center justify-between mt-2">
                   <div>
                     <span className="font-black text-orange-600">₹{product.price}</span>
-                    {product.discount && (
-                      <span className="text-[10px] text-gray-400 line-through ml-1">₹{Math.round(product.price * 1.2)}</span>
-                    )}
                   </div>
                   <Button 
                     size="sm" 

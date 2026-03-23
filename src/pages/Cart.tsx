@@ -9,11 +9,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Cart = () => {
-  const { cart, updateQuantity, totalAmount, deliveryCharge, orderType, setOrderType, selectedAddress } = useApp();
+  const { cart, updateQuantity, totalAmount, deliveryCharge, orderType, setOrderType, selectedAddress, placeOrder } = useApp();
   const navigate = useNavigate();
   const [isOrderTypeOpen, setIsOrderTypeOpen] = useState(false);
+
+  const handlePlaceOrder = () => {
+    if (orderType === 'delivery' && !selectedAddress) {
+      toast.error("Please select a delivery address first!");
+      navigate('/profile');
+      return;
+    }
+    
+    const orderId = placeOrder();
+    toast.success(`Order ${orderId} placed successfully!`);
+    navigate('/orders');
+  };
 
   if (cart.length === 0) {
     return (
@@ -76,7 +89,7 @@ const Cart = () => {
 
         {/* Address Section (Only for Delivery) */}
         {orderType === 'delivery' && (
-          <Card className="p-4 border-none shadow-sm">
+          <Card className="p-4 border-none shadow-sm" onClick={() => navigate('/profile')}>
             <div className="flex items-start space-x-3">
               <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                 <MapPin size={20} />
@@ -146,7 +159,10 @@ const Cart = () => {
 
       {/* Checkout Button */}
       <div className="fixed bottom-20 left-0 right-0 p-4 bg-white border-t z-40 max-w-md mx-auto">
-        <Button className="w-full bg-orange-600 hover:bg-orange-700 h-12 rounded-xl font-bold text-lg shadow-lg shadow-orange-200">
+        <Button 
+          className="w-full bg-orange-600 hover:bg-orange-700 h-12 rounded-xl font-bold text-lg shadow-lg shadow-orange-200"
+          onClick={handlePlaceOrder}
+        >
           Place Order (COD)
         </Button>
       </div>

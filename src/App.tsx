@@ -7,6 +7,8 @@ import { AppProvider } from "./context/AppContext";
 import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import Profile from "./pages/Profile";
+import Orders from "./pages/Orders";
+import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/layout/BottomNav";
 
@@ -22,8 +24,9 @@ const App = () => (
           <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl relative">
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
-              <Route path="/orders" element={<div className="p-4">Orders Page (Coming Soon)</div>} />
+              <Route path="/orders" element={<Orders />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
