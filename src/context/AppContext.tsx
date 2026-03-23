@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 interface Product {
   id: string;
@@ -17,14 +17,33 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  pincode: string;
+  city: string;
+  state: string;
+  fullAddress: string;
+}
+
+type OrderType = 'delivery' | 'pickup' | 'dine-in';
+
 interface AppContextType {
   cart: CartItem[];
   favorites: string[];
+  addresses: Address[];
+  selectedAddress: Address | null;
+  orderType: OrderType;
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
   toggleFavorite: (productId: string) => void;
+  setOrderType: (type: OrderType) => void;
+  addAddress: (address: Address) => void;
+  setSelectedAddress: (address: Address) => void;
   totalAmount: number;
+  deliveryCharge: number;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -32,6 +51,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddress, setSelectedAddressState] = useState<Address | null>(null);
+  const [orderType, setOrderType] = useState<OrderType>('delivery');
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -63,10 +85,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const addAddress = (address: Address) => {
+    setAddresses(prev => [...prev, address]);
+    if (!selectedAddress) setSelectedAddressState(address);
+  };
+
+  const setSelectedAddress = (address: Address) => {
+    setSelectedAddressState(address);
+  };
+
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Delivery Logic: ₹150+ order par FREE, warna ₹30 charge
+  const deliveryCharge = (orderType === 'delivery' && totalAmount < 150 && totalAmount > 0) ? 30 : 0;
 
   return (
-    <AppContext.Provider value={{ cart, favorites, addToCart, removeFromCart, updateQuantity, toggleFavorite, totalAmount }}>
+    <AppContext.Provider value={{ 
+      cart, favorites, addresses, selectedAddress, orderType, 
+      addToCart, removeFromCart, updateQuantity, toggleFavorite, 
+      setOrderType, addAddress, setSelectedAddress,
+      totalAmount, deliveryCharge 
+    }}>
       {children}
     </AppContext.Provider>
   );
