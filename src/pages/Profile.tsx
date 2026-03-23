@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn, Camera, Loader2 } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn, Camera, Loader2, Edit2 } from 'lucide-react';
+import { useApp, Address } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,6 +14,7 @@ import { updateProfile } from 'firebase/auth';
 const Profile = () => {
   const { user, login, logout, addresses, selectedAddress, setSelectedAddress } = useApp();
   const [isAddressOpen, setIsAddressOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | undefined>(undefined);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,18 +25,25 @@ const Profile = () => {
     try {
       setIsUploading(true);
       const imageUrl = await uploadToCloudinary(file);
-      
-      // Firebase में यूजर की प्रोफाइल फोटो अपडेट करना
       await updateProfile(user, { photoURL: imageUrl });
-      
       toast.success("Profile picture updated!");
-      // पेज रिफ्रेश करने की जरूरत पड़ सकती है या स्टेट अपडेट करना होगा
       window.location.reload(); 
     } catch (error) {
-      toast.error("Failed to upload image. Check your Cloudinary config.");
+      toast.error("Failed to upload image.");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleEditAddress = (e: React.MouseEvent, addr: Address) => {
+    e.stopPropagation();
+    setEditingAddress(addr);
+    setIsAddressOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingAddress(undefined);
+    setIsAddressOpen(true);
   };
 
   return (
@@ -97,7 +105,6 @@ const Profile = () => {
       </header>
 
       <div className="p-4 space-y-6">
-        {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
@@ -113,24 +120,32 @@ const Profile = () => {
           </Card>
         </div>
 
-        {/* Saved Addresses */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="font-black text-gray-800 text-lg">Saved Addresses</h2>
-            <Dialog open={isAddressOpen} onOpenChange={setIsAddressOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-orange-600 font-bold hover:bg-orange-50">
-                  <Plus size={18} className="mr-1" /> Add New
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] rounded-[32px] p-6">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-black">Add New Address</DialogTitle>
-                </DialogHeader>
-                <AddressForm onSuccess={() => setIsAddressOpen(false)} />
-              </DialogContent>
-            </Dialog>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-orange-600 font-bold hover:bg-orange-50"
+              onClick={handleAddNew}
+            >
+              <Plus size={18} className="mr-1" /> Add New
+            </Button>
           </div>
+
+          <Dialog open={isAddressOpen} onOpenChange={setIsAddressOpen}>
+            <DialogContent className="sm:max-w-[425px] rounded-[32px] p-6">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black">
+                  {editingAddress ? 'Edit Address' : 'Add New Address'}
+                </DialogTitle>
+              </DialogHeader>
+              <AddressForm 
+                onSuccess={() => setIsAddressOpen(false)} 
+                initialData={editingAddress}
+              />
+            </DialogContent>
+          </Dialog>
 
           {addresses.length === 0 ? (
             <Card className="p-10 text-center border-dashed border-2 border-gray-200 bg-transparent rounded-[24px]">
@@ -158,9 +173,19 @@ const Profile = () => {
                         <p className="text-xs text-gray-400 mt-1 font-medium">Phone: {addr.phone}</p>
                       </div>
                     </div>
-                    {selectedAddress?.id === addr.id && (
-                      <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded-full">SELECTED</span>
-                    )}
+                    <div className="flex flex-col items-end space-y-2">
+                      {selectedAddress?.id === addr.id && (
+                        <span className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded-full">SELECTED</span>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-gray-400 hover:text-orange-600"
+                        onClick={(e) => handleEditAddress(e, addr)}
+                      >
+                        <Edit2 size={16} />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}

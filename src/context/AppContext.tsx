@@ -45,7 +45,7 @@ interface CartItem extends Product {
   quantity: number;
 }
 
-interface Address {
+export interface Address {
   id: string;
   name: string;
   phone: string;
@@ -94,6 +94,7 @@ interface AppContextType {
   toggleFavorite: (productId: string) => void;
   setOrderType: (type: any) => void;
   addAddress: (address: Address) => void;
+  updateAddress: (address: Address) => void;
   setSelectedAddress: (address: Address) => void;
   placeOrder: () => Promise<string | null>;
   updateOrderStatus: (orderId: string, status: OrderStatus, deliveryInfo?: any) => Promise<void>;
@@ -118,7 +119,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    // 1. Auth Listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -139,19 +139,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setRole('customer');
       }
-      // Loading को यहाँ false नहीं करेंगे, डेटा आने का इंतज़ार करेंगे
     });
 
-    // 2. Categories (Checking both 'Categories' and 'categories')
     const categoriesRef = ref(rtdb, '/');
     onValue(categoriesRef, (snapshot) => {
       const rootData = snapshot.val();
       if (rootData) {
-        // Categories
         const cats = rootData.Categories || rootData.categories || {};
         setCategories(Object.keys(cats).map(key => ({ id: key, ...cats[key] })));
 
-        // Products
         const prods = rootData.Products || rootData.products || {};
         const productList = Object.keys(prods).map(key => {
           const p = prods[key];
@@ -163,11 +159,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         setProducts(productList.filter(p => p.isActive !== false));
 
-        // Banners
         const bans = rootData.Banners || rootData.banners || {};
         setBanners(Object.keys(bans).map(key => ({ id: key, ...bans[key] })));
         
-        setLoading(false); // डेटा मिलने के बाद loading false करें
+        setLoading(false);
       } else {
         setLoading(false);
       }
@@ -264,6 +259,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!selectedAddress) setSelectedAddressState(address);
   };
 
+  const updateAddress = (updatedAddress: Address) => {
+    const newAddresses = addresses.map(addr => 
+      addr.id === updatedAddress.id ? updatedAddress : addr
+    );
+    updateUserData({ addresses: newAddresses });
+    if (selectedAddress?.id === updatedAddress.id) {
+      setSelectedAddressState(updatedAddress);
+    }
+    toast.success("Address updated!");
+  };
+
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryCharge = (orderType === 'delivery' && totalAmount < 150 && totalAmount > 0) ? 30 : 0;
 
@@ -308,7 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       user, role, loading, products, categories, banners, cart, favorites, addresses, selectedAddress, orderType, orders,
       login, logout, addToCart, updateQuantity, toggleFavorite, 
-      setOrderType, addAddress, setSelectedAddress: setSelectedAddressState, placeOrder, updateOrderStatus,
+      setOrderType, addAddress, updateAddress, setSelectedAddress: setSelectedAddressState, placeOrder, updateOrderStatus,
       totalAmount, deliveryCharge 
     }}>
       {children}

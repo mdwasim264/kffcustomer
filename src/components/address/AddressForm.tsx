@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useApp } from '@/context/AppContext';
+import { useApp, Address } from '@/context/AppContext';
 
 const addressSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -20,13 +20,14 @@ const addressSchema = z.object({
 
 interface AddressFormProps {
   onSuccess: () => void;
+  initialData?: Address;
 }
 
-const AddressForm: React.FC<AddressFormProps> = ({ onSuccess }) => {
-  const { addAddress } = useApp();
+const AddressForm: React.FC<AddressFormProps> = ({ onSuccess, initialData }) => {
+  const { addAddress, updateAddress } = useApp();
   const form = useForm<z.infer<typeof addressSchema>>({
     resolver: zodResolver(addressSchema),
-    defaultValues: {
+    defaultValues: initialData || {
       name: '',
       phone: '',
       pincode: '',
@@ -37,10 +38,17 @@ const AddressForm: React.FC<AddressFormProps> = ({ onSuccess }) => {
   });
 
   const onSubmit = (values: z.infer<typeof addressSchema>) => {
-    addAddress({
-      id: Math.random().toString(36).substr(2, 9),
-      ...values,
-    });
+    if (initialData) {
+      updateAddress({
+        ...initialData,
+        ...values,
+      });
+    } else {
+      addAddress({
+        id: Math.random().toString(36).substr(2, 9),
+        ...values,
+      });
+    }
     onSuccess();
   };
 
@@ -129,7 +137,9 @@ const AddressForm: React.FC<AddressFormProps> = ({ onSuccess }) => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">Save Address</Button>
+        <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">
+          {initialData ? 'Update Address' : 'Save Address'}
+        </Button>
       </form>
     </Form>
   );
