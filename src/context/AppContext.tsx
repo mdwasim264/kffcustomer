@@ -28,6 +28,12 @@ export interface Product {
   description?: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  image: string;
+}
+
 interface CartItem extends Product {
   quantity: number;
 }
@@ -61,6 +67,7 @@ interface AppContextType {
   user: User | null;
   loading: boolean;
   products: Product[];
+  categories: Category[];
   cart: CartItem[];
   favorites: string[];
   addresses: Address[];
@@ -87,6 +94,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -107,9 +115,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setProducts(items);
     });
 
+    // Fetch Categories (Real-time)
+    const unsubscribeCategories = onSnapshot(collection(db, "categories"), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+      setCategories(items);
+    });
+
     return () => {
       unsubscribeAuth();
       unsubscribeProducts();
+      unsubscribeCategories();
     };
   }, []);
 
@@ -123,11 +138,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Real-time Orders (Index Error से बचने के लिए orderBy हटा दिया है)
     const qOrders = query(collection(db, "orders"), where("userId", "==", user.uid));
     const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      // कोड में सॉर्ट करना (Latest first)
       const sortedOrders = fetchedOrders.sort((a, b) => {
         const dateA = a.createdAt?.seconds || 0;
         const dateB = b.createdAt?.seconds || 0;
@@ -136,7 +149,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOrders(sortedOrders);
     });
 
-    // Real-time Profile Data (Cart, Favorites, Addresses)
     const unsubscribeProfile = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -233,7 +245,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: new Date(),
       };
       const docRef = await addDoc(collection(db, "orders"), orderData);
-      await updateUserData({ cart: [] }); // Clear cart after order
+      await updateUserData({ cart: [] });
       return docRef.id;
     } catch (error) {
       toast.error("Failed to place order");
@@ -243,7 +255,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{ 
-      user, loading, products, cart, favorites, addresses, selectedAddress, orderType, orders,
+      user, loading, products, categories, cart, favorites, addresses, selectedAddress, orderType, orders,
       login, logout, addToCart, removeFromCart: (id) => updateQuantity(id, -cart.find(i => i.id === id)!.quantity), 
       updateQuantity, toggleFavorite, 
       setOrderType, addAddress, setSelectedAddress, placeOrder,

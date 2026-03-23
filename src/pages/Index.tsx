@@ -1,24 +1,15 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Heart, Star, X, Loader2 } from 'lucide-react';
+import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import SplashScreen from '@/components/layout/SplashScreen';
 
-const CATEGORIES = [
-  { name: 'All', icon: '🍽️' },
-  { name: 'Burgers', icon: '🍔' },
-  { name: 'Pizza', icon: '🍕' },
-  { name: 'Rolls', icon: '🌯' },
-  { name: 'Drinks', icon: '🥤' },
-  { name: 'Desserts', icon: '🍰' },
-];
-
 const Index = () => {
-  const { products, addToCart, toggleFavorite, favorites, loading } = useApp();
+  const { products, categories, addToCart, toggleFavorite, favorites, loading } = useApp();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showSplash, setShowSplash] = useState(true);
@@ -80,14 +71,30 @@ const Index = () => {
         <div className="mt-8 px-4">
           <h2 className="text-lg font-bold mb-4">Categories</h2>
           <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-2">
-            {CATEGORIES.map((cat) => (
+            {/* "All" Category Button */}
+            <button 
+              onClick={() => setSelectedCategory('All')}
+              className="flex flex-col items-center space-y-2 min-w-[70px] outline-none"
+            >
+              <div className={`w-16 h-16 rounded-full shadow-sm flex items-center justify-center text-2xl border transition-all ${selectedCategory === 'All' ? 'bg-orange-600 border-orange-600 scale-110 text-white' : 'bg-white border-gray-100 text-orange-600'}`}>
+                <UtensilsCrossed size={24} />
+              </div>
+              <span className={`text-xs font-bold ${selectedCategory === 'All' ? 'text-orange-600' : 'text-gray-500'}`}>All</span>
+            </button>
+
+            {/* Dynamic Categories from Firestore */}
+            {categories.map((cat) => (
               <button 
-                key={cat.name} 
+                key={cat.id} 
                 onClick={() => setSelectedCategory(cat.name)}
                 className="flex flex-col items-center space-y-2 min-w-[70px] outline-none"
               >
-                <div className={`w-16 h-16 rounded-full shadow-sm flex items-center justify-center text-2xl border transition-all ${selectedCategory === cat.name ? 'bg-orange-600 border-orange-600 scale-110' : 'bg-white border-gray-100'}`}>
-                  {cat.icon}
+                <div className={`w-16 h-16 rounded-full shadow-sm flex items-center justify-center overflow-hidden border transition-all ${selectedCategory === cat.name ? 'border-orange-600 scale-110 ring-2 ring-orange-100' : 'bg-white border-gray-100'}`}>
+                  {cat.image ? (
+                    <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">🍽️</span>
+                  )}
                 </div>
                 <span className={`text-xs font-bold ${selectedCategory === cat.name ? 'text-orange-600' : 'text-gray-500'}`}>{cat.name}</span>
               </button>
@@ -128,7 +135,7 @@ const Index = () => {
                         <div className={`w-1.5 h-1.5 rounded-full ${product.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
                       </div>
                       <span className="text-[10px] text-gray-400 flex items-center">
-                        <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating}
+                        <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating || '4.5'}
                       </span>
                     </div>
                     <h3 className="font-bold text-sm truncate cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
