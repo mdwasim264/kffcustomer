@@ -12,7 +12,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   updateDoc
 } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -113,13 +112,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Fetch user role from Firestore
         const userDoc = doc(db, "users", currentUser.uid);
         onSnapshot(userDoc, (snap) => {
           if (snap.exists()) {
             setRole(snap.data().role || 'customer');
           } else {
-            // Create user doc if not exists
             setDoc(userDoc, { 
               email: currentUser.email, 
               name: currentUser.displayName, 
@@ -135,7 +132,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLoading(false);
     });
 
-    // Fetch Categories & Products from RTDB
     const categoriesRef = ref(rtdb, 'Categories');
     onValue(categoriesRef, (snapshot) => {
       const data = snapshot.val();
@@ -151,7 +147,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribeAuth();
   }, []);
 
-  // Order Fetching Logic based on Role
+  // Order Fetching Logic (Fixed Index Error)
   useEffect(() => {
     if (!user) {
       setOrders([]);
@@ -159,27 +155,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     let q;
-    if (role === 'admin') {
-      // Admin sees all orders
-      q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-    } else if (role === 'delivery') {
-      // Delivery boy sees orders that are 'Accepted', 'Preparing', or assigned to them
-      q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-      // Note: In a real app, you'd filter more strictly, but for now we show all to let them pick
+    if (role === 'admin' || role === 'delivery') {
+      // Admin/Delivery sees all orders
+      q = query(collection(db, "orders"));
     } else {
       // Customer sees only their orders
-      q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+      q = query(collection(db, "orders"), where("userId", "==", user.uid));
     }
 
     const unsubscribeOrders = onSnapshot(q, (snapshot) => {
       const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      setOrders(fetchedOrders);
+      // Sort in memory to avoid Firestore Index requirement
+      const sortedOrders = fetchedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setOrders(sortedOrders);
     });
 
     return () => unsubscribeOrders();
   }, [user, role]);
 
-  // User Profile Data
   useEffect(() => {
     if (!user) return;
     const unsubscribeProfile = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
