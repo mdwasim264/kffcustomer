@@ -10,8 +10,7 @@ import {
   setDoc, 
   addDoc, 
   query, 
-  where, 
-  orderBy,
+  where,
   getDocs
 } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -124,10 +123,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    // Real-time Orders
-    const qOrders = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    // Real-time Orders (Index Error से बचने के लिए orderBy हटा दिया है)
+    const qOrders = query(collection(db, "orders"), where("userId", "==", user.uid));
     const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
+      const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      // कोड में सॉर्ट करना (Latest first)
+      const sortedOrders = fetchedOrders.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      });
+      setOrders(sortedOrders);
     });
 
     // Real-time Profile Data (Cart, Favorites, Addresses)
