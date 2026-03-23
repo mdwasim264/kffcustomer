@@ -1,25 +1,18 @@
 "use client";
 
 import React from 'react';
-import { Heart, ShoppingCart, Star, ChevronLeft } from 'lucide-react';
+import { Heart, ShoppingCart, Star, ChevronLeft, Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
-const MOCK_PRODUCTS = [
-  { id: '1', name: 'KFF Special Burger', price: 120, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80', category: 'Burgers', isVeg: true, rating: 4.5 },
-  { id: '2', name: 'Chicken Tikka Roll', price: 150, image: 'https://images.unsplash.com/photo-1626776876729-bab4369a5a5a?auto=format&fit=crop&w=400&q=80', category: 'Rolls', isVeg: false, rating: 4.8 },
-  { id: '3', name: 'Paneer Pizza', price: 250, image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80', category: 'Pizza', isVeg: true, rating: 4.2 },
-  { id: '4', name: 'Cold Coffee', price: 80, image: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=400&q=80', category: 'Drinks', isVeg: true, rating: 4.6 },
-  { id: '5', name: 'Veg Cheese Burger', price: 90, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80', category: 'Burgers', isVeg: true, rating: 4.3 },
-  { id: '6', name: 'Chocolate Brownie', price: 110, image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=400&q=80', category: 'Desserts', isVeg: true, rating: 4.9 },
-];
-
 const Favorites = () => {
-  const { favorites, toggleFavorite, addToCart } = useApp();
+  const { favorites, toggleFavorite, addToCart, products, loading } = useApp();
   const navigate = useNavigate();
   
-  const favoriteProducts = MOCK_PRODUCTS.filter(p => favorites.includes(p.id));
+  const favoriteProducts = products.filter(p => favorites.includes(p.id));
+
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-orange-600" size={40} /></div>;
 
   return (
     <div className="pb-24 bg-gray-50 min-h-screen">
@@ -51,7 +44,7 @@ const Favorites = () => {
                       <div className={`w-1 h-1 rounded-full ${product.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
                     </div>
                     <span className="text-[10px] text-gray-400 flex items-center">
-                      <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating}
+                      <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating || '4.5'}
                     </span>
                   </div>
                   <h3 className="font-bold text-sm">{product.name}</h3>
