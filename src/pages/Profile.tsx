@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn, Camera, Loader2, Edit2 } from 'lucide-react';
+import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn, Camera, Loader2, Edit2, MessageCircle } from 'lucide-react';
 import { useApp, Address } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,8 @@ const Profile = () => {
   const [editingAddress, setEditingAddress] = useState<Address | undefined>(undefined);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const adminWhatsApp = "919903605771"; // Country code added for WhatsApp link
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,6 +107,7 @@ const Profile = () => {
       </header>
 
       <div className="p-4 space-y-6">
+        {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
@@ -120,6 +123,31 @@ const Profile = () => {
           </Card>
         </div>
 
+        {/* WhatsApp Support Section */}
+        <div className="space-y-3">
+          <h2 className="font-black text-gray-800 text-lg px-1">Help & Support</h2>
+          <a 
+            href={`https://wa.me/${adminWhatsApp}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Card className="p-4 border-none shadow-sm bg-green-50 flex items-center justify-between hover:bg-green-100 transition-colors rounded-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-600 text-white rounded-xl">
+                  <MessageCircle size={24} />
+                </div>
+                <div>
+                  <p className="font-bold text-green-900">Chat with Admin</p>
+                  <p className="text-xs text-green-700 font-medium">WhatsApp: +91 9903605771</p>
+                </div>
+              </div>
+              <ChevronRight size={20} className="text-green-600" />
+            </Card>
+          </a>
+        </div>
+
+        {/* Addresses Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="font-black text-gray-800 text-lg">Saved Addresses</h2>
