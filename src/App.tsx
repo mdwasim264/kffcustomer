@@ -12,6 +12,7 @@ import Favorites from "./pages/Favorites";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/layout/BottomNav";
+import PWAInstallPrompt from "./components/layout/PWAInstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <PWAInstallPrompt />
             <BottomNav />
           </div>
         </BrowserRouter>
