@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Trash2, Plus, Minus, MapPin, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Trash2, Plus, Minus, MapPin, ChevronRight, ShoppingBag, Ticket, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -15,6 +16,20 @@ const Cart = () => {
   const { cart, updateQuantity, totalAmount, deliveryCharge, orderType, setOrderType, selectedAddress, placeOrder } = useApp();
   const navigate = useNavigate();
   const [isOrderTypeOpen, setIsOrderTypeOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
+
+  const handleApplyCoupon = () => {
+    if (couponCode.toUpperCase() === 'KFF50') {
+      setAppliedCoupon({ code: 'KFF50', discount: 50 });
+      toast.success("₹50 discount applied!");
+      setCouponCode('');
+    } else {
+      toast.error("Invalid coupon code!");
+    }
+  };
+
+  const finalTotal = Math.max(0, totalAmount + deliveryCharge - (appliedCoupon?.discount || 0));
 
   const handlePlaceOrder = () => {
     if (orderType === 'delivery' && !selectedAddress) {
@@ -135,6 +150,41 @@ const Cart = () => {
           ))}
         </div>
 
+        {/* Coupon Section */}
+        <Card className="p-4 border-none shadow-sm">
+          <div className="flex items-center space-x-3 mb-3">
+            <Ticket size={20} className="text-orange-600" />
+            <h2 className="font-bold text-gray-700">Coupons & Offers</h2>
+          </div>
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between bg-green-50 p-3 rounded-xl border border-green-100">
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-green-600">{appliedCoupon.code}</Badge>
+                <span className="text-xs font-bold text-green-700">Applied! ₹{appliedCoupon.discount} saved</span>
+              </div>
+              <button onClick={() => setAppliedCoupon(null)} className="text-gray-400 hover:text-red-500">
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex space-x-2">
+              <Input 
+                placeholder="Enter code (Try KFF50)" 
+                className="bg-gray-50 border-none rounded-xl"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+              />
+              <Button 
+                variant="ghost" 
+                className="text-orange-600 font-bold"
+                onClick={handleApplyCoupon}
+              >
+                APPLY
+              </Button>
+            </div>
+          )}
+        </Card>
+
         {/* Bill Details */}
         <Card className="p-4 border-none shadow-sm space-y-3">
           <h2 className="font-bold text-gray-700">Bill Details</h2>
@@ -150,9 +200,15 @@ const Cart = () => {
               </span>
             </div>
           )}
+          {appliedCoupon && (
+            <div className="flex justify-between text-sm text-green-600 font-bold">
+              <span>Coupon Discount</span>
+              <span>-₹{appliedCoupon.discount}</span>
+            </div>
+          )}
           <div className="pt-3 border-t flex justify-between items-center">
             <span className="font-black text-lg">Total Amount</span>
-            <span className="font-black text-lg text-orange-600">₹{totalAmount + deliveryCharge}</span>
+            <span className="font-black text-lg text-orange-600">₹{finalTotal}</span>
           </div>
         </Card>
       </div>
