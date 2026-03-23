@@ -118,6 +118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
+    // 1. Auth Listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -138,40 +139,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         setRole('customer');
       }
-      setLoading(false);
+      // Loading को यहाँ false नहीं करेंगे, डेटा आने का इंतज़ार करेंगे
     });
 
-    const categoriesRef = ref(rtdb, 'Categories');
+    // 2. Categories (Checking both 'Categories' and 'categories')
+    const categoriesRef = ref(rtdb, '/');
     onValue(categoriesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setCategories(Object.keys(data).map(key => ({ id: key, ...data[key] })));
-      }
-    });
+      const rootData = snapshot.val();
+      if (rootData) {
+        // Categories
+        const cats = rootData.Categories || rootData.categories || {};
+        setCategories(Object.keys(cats).map(key => ({ id: key, ...cats[key] })));
 
-    const productsRef = ref(rtdb, 'Products');
-    onValue(productsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const productList = Object.keys(data).map(key => {
-          const p = data[key];
+        // Products
+        const prods = rootData.Products || rootData.products || {};
+        const productList = Object.keys(prods).map(key => {
+          const p = prods[key];
           return {
             id: key,
             ...p,
-            // डेटाबेस में 'type' है, हम उसे 'isVeg' में बदल रहे हैं
             isVeg: p.type === 'Veg' || p.isVeg === true
           };
         });
-        // सिर्फ एक्टिव प्रोडक्ट्स दिखाएं
         setProducts(productList.filter(p => p.isActive !== false));
-      }
-    });
 
-    const bannersRef = ref(rtdb, 'Banners');
-    onValue(bannersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setBanners(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+        // Banners
+        const bans = rootData.Banners || rootData.banners || {};
+        setBanners(Object.keys(bans).map(key => ({ id: key, ...bans[key] })));
+        
+        setLoading(false); // डेटा मिलने के बाद loading false करें
+      } else {
+        setLoading(false);
       }
     });
 
