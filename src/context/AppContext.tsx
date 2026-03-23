@@ -3,16 +3,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db, rtdb, googleProvider } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, push, set, update, serverTimestamp } from 'firebase/database';
 import { 
   doc, 
   onSnapshot, 
   setDoc, 
-  addDoc, 
-  collection,
-  query,
-  where,
-  updateDoc
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -147,30 +142,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribeAuth();
   }, []);
 
-  // Order Fetching Logic (Fixed Index Error)
+  // Order Fetching Logic from Realtime Database
   useEffect(() => {
     if (!user) {
       setOrders([]);
       return;
     }
 
-    let q;
-    if (role === 'admin' || role === 'delivery') {
-      // Admin/Delivery sees all orders
-      q = query(collection(db, "orders"));
-    } else {
-      // Customer sees only their orders
-      q = query(collection(db, "orders"), where("userId", "==", user.uid));
-    }
+    const ordersRef = ref(rtdb, 'Orders');
+    const unsubscribeOrders = onValue(ordersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const allOrders = Object.keys(data).map(key => ({ id: key, ...data[key] } as Order));
+        
+        let filteredOrders;
+        if (role === 'admin' || role === 'delivery') {
+          filteredOrders = allOrders;
+        } else {
+          filteredOrders = allOrders.filter(order => order.userId === user.uid);
+        }
 
-    const unsubscribeOrders = onSnapshot(q, (snapshot) => {
-      const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      // Sort in memory to avoid Firestore Index requirement
-      const sortedOrders = fetchedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setOrders(sortedOrders);
+        // Sort by createdAt descending
+        const sortedOrders = filteredOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setOrders(sortedOrders);
+      } else {
+        setOrders([]);
+      }
     });
 
-    return () => unsubscribeOrders();
+    return () => unsubscribeOrders;
   }, [user, role]);
 
   useEffect(() => {
@@ -245,6 +245,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const placeOrder = async () => {
     if (!user) return null;
     try {
+      const ordersRef = ref(rtdb, 'Orders');
+      const newOrderRef = push(ordersRef);
+      
       const orderData = {
         userId: user.uid,
         userName: user.displayName || 'Guest',
@@ -257,10 +260,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: new Date().toLocaleString(),
         createdAt: Date.now(),
       };
-      const docRef = await addDoc(collection(db, "orders"), orderData);
+
+      await set(newOrderRef, orderData);
       await updateUserData({ cart: [] });
-      return docRef.id;
+      return newOrderRef.key;
     } catch (error) {
+      console.error("Order Error:", error);
       toast.error("Failed to place order");
       return null;
     }
@@ -268,8 +273,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus, deliveryInfo?: any) => {
     try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { 
+      const orderRef = ref(rtdb, `Orders/${orderId}`);
+      await update(orderRef, { 
         status,
         ...deliveryInfo
       });
