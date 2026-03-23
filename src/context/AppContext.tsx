@@ -11,7 +11,9 @@ import {
   addDoc, 
   collection,
   query,
-  where
+  where,
+  orderBy,
+  updateDoc
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -47,21 +49,28 @@ interface Address {
   fullAddress: string;
 }
 
-type OrderType = 'delivery' | 'pickup' | 'dine-in';
+export type OrderStatus = 'Pending' | 'Accepted' | 'Preparing' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+export type UserRole = 'customer' | 'admin' | 'delivery';
+
 interface Order {
   id: string;
   userId: string;
+  userName: string;
+  userPhone: string;
   items: CartItem[];
   total: number;
-  type: OrderType;
-  status: string;
+  type: string;
+  status: OrderStatus;
   address?: Address;
   date: string;
-  createdAt: any;
+  createdAt: number;
+  deliveryBoyId?: string;
+  deliveryBoyName?: string;
 }
 
 interface AppContextType {
   user: User | null;
+  role: UserRole;
   loading: boolean;
   products: Product[];
   categories: Category[];
@@ -69,17 +78,18 @@ interface AppContextType {
   favorites: string[];
   addresses: Address[];
   selectedAddress: Address | null;
-  orderType: OrderType;
+  orderType: 'delivery' | 'pickup' | 'dine-in';
   orders: Order[];
   login: () => Promise<void>;
   logout: () => Promise<void>;
   addToCart: (product: Product) => void;
   updateQuantity: (productId: string, delta: number) => void;
   toggleFavorite: (productId: string) => void;
-  setOrderType: (type: OrderType) => void;
+  setOrderType: (type: any) => void;
   addAddress: (address: Address) => void;
   setSelectedAddress: (address: Address) => void;
   placeOrder: () => Promise<string | null>;
+  updateOrderStatus: (orderId: string, status: OrderStatus, deliveryInfo?: any) => Promise<void>;
   totalAmount: number;
   deliveryCharge: number;
 }
@@ -88,6 +98,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<UserRole>('customer');
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -95,75 +106,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [favorites, setFavorites] = useState<string[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddressState] = useState<Address | null>(null);
-  const [orderType, setOrderType] = useState<OrderType>('delivery');
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup' | 'dine-in'>('delivery');
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Fetch user role from Firestore
+        const userDoc = doc(db, "users", currentUser.uid);
+        onSnapshot(userDoc, (snap) => {
+          if (snap.exists()) {
+            setRole(snap.data().role || 'customer');
+          } else {
+            // Create user doc if not exists
+            setDoc(userDoc, { 
+              email: currentUser.email, 
+              name: currentUser.displayName, 
+              role: 'customer',
+              createdAt: Date.now() 
+            }, { merge: true });
+            setRole('customer');
+          }
+        });
+      } else {
+        setRole('customer');
+      }
       setLoading(false);
     });
 
-    // 1. Fetch Categories from Realtime Database
+    // Fetch Categories & Products from RTDB
     const categoriesRef = ref(rtdb, 'Categories');
-    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
+    onValue(categoriesRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        const items = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        })) as Category[];
-        console.log("RTDB Categories Loaded:", items);
-        setCategories(items);
-      } else {
-        // Try lowercase if uppercase fails
-        onValue(ref(rtdb, 'categories'), (snap) => {
-          const d = snap.val();
-          if (d) {
-            const items = Object.keys(d).map(k => ({ id: k, ...d[k] })) as Category[];
-            setCategories(items);
-          }
-        });
-      }
+      if (data) setCategories(Object.keys(data).map(key => ({ id: key, ...data[key] })));
     });
 
-    // 2. Fetch Products from Realtime Database
     const productsRef = ref(rtdb, 'Products');
-    const unsubscribeProducts = onValue(productsRef, (snapshot) => {
+    onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-        const items = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        })) as Product[];
-        console.log("RTDB Products Loaded:", items);
-        setProducts(items);
-      } else {
-        // Try lowercase
-        onValue(ref(rtdb, 'products'), (snap) => {
-          const d = snap.val();
-          if (d) {
-            const items = Object.keys(d).map(k => ({ id: k, ...d[k] })) as Product[];
-            setProducts(items);
-          }
-        });
-      }
+      if (data) setProducts(Object.keys(data).map(key => ({ id: key, ...data[key] })));
     });
 
-    return () => {
-      unsubscribeAuth();
-      unsubscribeCategories();
-      unsubscribeProducts();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
-  // User Specific Data (Firestore for Profile/Orders)
+  // Order Fetching Logic based on Role
   useEffect(() => {
     if (!user) {
-      setCart([]); setFavorites([]); setOrders([]); setAddresses([]);
+      setOrders([]);
       return;
     }
 
+    let q;
+    if (role === 'admin') {
+      // Admin sees all orders
+      q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    } else if (role === 'delivery') {
+      // Delivery boy sees orders that are 'Accepted', 'Preparing', or assigned to them
+      q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+      // Note: In a real app, you'd filter more strictly, but for now we show all to let them pick
+    } else {
+      // Customer sees only their orders
+      q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    }
+
+    const unsubscribeOrders = onSnapshot(q, (snapshot) => {
+      const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      setOrders(fetchedOrders);
+    });
+
+    return () => unsubscribeOrders();
+  }, [user, role]);
+
+  // User Profile Data
+  useEffect(() => {
+    if (!user) return;
     const unsubscribeProfile = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -172,17 +190,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAddresses(data.addresses || []);
       }
     });
-
-    const qOrders = query(collection(db, "orders"), where("userId", "==", user.uid));
-    const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
-      const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      setOrders(fetchedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
-    });
-
-    return () => {
-      unsubscribeProfile();
-      unsubscribeOrders();
-    };
+    return () => unsubscribeProfile();
   }, [user]);
 
   const updateUserData = async (newData: any) => {
@@ -246,6 +254,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const orderData = {
         userId: user.uid,
+        userName: user.displayName || 'Guest',
+        userPhone: selectedAddress?.phone || '',
         items: [...cart],
         total: totalAmount + deliveryCharge,
         type: orderType,
@@ -263,11 +273,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateOrderStatus = async (orderId: string, status: OrderStatus, deliveryInfo?: any) => {
+    try {
+      const orderRef = doc(db, "orders", orderId);
+      await updateDoc(orderRef, { 
+        status,
+        ...deliveryInfo
+      });
+      toast.success(`Order status updated to ${status}`);
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
   return (
     <AppContext.Provider value={{ 
-      user, loading, products, categories, cart, favorites, addresses, selectedAddress, orderType, orders,
+      user, role, loading, products, categories, cart, favorites, addresses, selectedAddress, orderType, orders,
       login, logout, addToCart, updateQuantity, toggleFavorite, 
-      setOrderType, addAddress, setSelectedAddress: setSelectedAddressState, placeOrder,
+      setOrderType, addAddress, setSelectedAddress: setSelectedAddressState, placeOrder, updateOrderStatus,
       totalAmount, deliveryCharge 
     }}>
       {children}
