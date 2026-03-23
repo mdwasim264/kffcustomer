@@ -1,27 +1,72 @@
 "use client";
 
-import React, { useState } from 'react';
-import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { User as UserIcon, MapPin, Package, LogOut, Plus, ChevronRight, LogIn, Camera, Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AddressForm from '@/components/address/AddressForm';
+import { uploadToCloudinary } from '@/utils/cloudinary';
+import { toast } from 'sonner';
+import { updateProfile } from 'firebase/auth';
 
 const Profile = () => {
   const { user, login, logout, addresses, selectedAddress, setSelectedAddress } = useApp();
   const [isAddressOpen, setIsAddressOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setIsUploading(true);
+      const imageUrl = await uploadToCloudinary(file);
+      
+      // Firebase में यूजर की प्रोफाइल फोटो अपडेट करना
+      await updateProfile(user, { photoURL: imageUrl });
+      
+      toast.success("Profile picture updated!");
+      // पेज रिफ्रेश करने की जरूरत पड़ सकती है या स्टेट अपडेट करना होगा
+      window.location.reload(); 
+    } catch (error) {
+      toast.error("Failed to upload image. Check your Cloudinary config.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="pb-24 bg-gray-50 min-h-screen">
       <header className="bg-white px-4 py-8 shadow-sm">
         <div className="flex items-center space-x-4">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 overflow-hidden border-4 border-white shadow-sm">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <UserIcon size={40} />
+          <div className="relative group">
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 overflow-hidden border-4 border-white shadow-sm">
+              {isUploading ? (
+                <Loader2 className="animate-spin" size={24} />
+              ) : user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <UserIcon size={40} />
+              )}
+            </div>
+            {user && (
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-orange-600 text-white p-1.5 rounded-full border-2 border-white shadow-sm hover:bg-orange-700 transition-colors"
+              >
+                <Camera size={14} />
+              </button>
             )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleImageUpload}
+            />
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-black text-gray-900">
@@ -122,29 +167,6 @@ const Profile = () => {
             </div>
           )}
         </div>
-
-        {/* App Info */}
-        <Card className="p-2 border-none shadow-sm bg-white rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                <ChevronRight size={18} className="rotate-180" />
-              </div>
-              <span className="text-sm font-bold text-gray-700">About KFF</span>
-            </div>
-            <ChevronRight size={18} className="text-gray-300" />
-          </div>
-          <div className="h-[1px] bg-gray-50 mx-4" />
-          <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                <ChevronRight size={18} className="rotate-180" />
-              </div>
-              <span className="text-sm font-bold text-gray-700">Support & Help</span>
-            </div>
-            <ChevronRight size={18} className="text-gray-300" />
-          </div>
-        </Card>
       </div>
     </div>
   );
