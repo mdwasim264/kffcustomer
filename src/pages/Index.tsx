@@ -1,12 +1,24 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed } from 'lucide-react';
+import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import SplashScreen from '@/components/layout/SplashScreen';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const Index = () => {
   const { products, categories, addToCart, toggleFavorite, favorites, loading } = useApp();
@@ -15,13 +27,36 @@ const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
 
+  // Filter States
+  const [isVegOnly, setIsVegOnly] = useState(false);
+  const [sortBy, setSortBy] = useState('default'); // 'default', 'price-low', 'price-high', 'rating'
+
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    let result = products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesVeg = isVegOnly ? product.isVeg === true : true;
+      return matchesSearch && matchesCategory && matchesVeg;
     });
-  }, [search, selectedCategory, products]);
+
+    // Sorting
+    if (sortBy === 'price-low') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price-high') {
+      result.sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    return result;
+  }, [search, selectedCategory, products, isVegOnly, sortBy]);
+
+  const resetFilters = () => {
+    setIsVegOnly(false);
+    setSortBy('default');
+  };
+
+  const activeFiltersCount = (isVegOnly ? 1 : 0) + (sortBy !== 'default' ? 1 : 0);
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-orange-600" size={40} /></div>;
 
@@ -46,7 +81,7 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Search Bar */}
+        {/* Search Bar & Filter */}
         <div className="px-4 mt-4 flex space-x-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -62,16 +97,89 @@ const Index = () => {
               </button>
             )}
           </div>
-          <Button variant="secondary" size="icon" className="rounded-xl bg-white shadow-sm">
-            <Filter size={18} />
-          </Button>
+          
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="secondary" size="icon" className="rounded-xl bg-white shadow-sm relative">
+                <Filter size={18} className={activeFiltersCount > 0 ? "text-orange-600" : "text-gray-600"} />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-[32px] h-[60vh]">
+              <SheetHeader className="flex flex-row items-center justify-between border-b pb-4">
+                <SheetTitle className="text-xl font-black">Filters</SheetTitle>
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="text-orange-600 font-bold">Reset</Button>
+              </SheetHeader>
+              
+              <div className="py-6 space-y-8">
+                {/* Veg Only Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base font-bold">Veg Only</Label>
+                    <p className="text-xs text-gray-500">Show only vegetarian dishes</p>
+                  </div>
+                  <Switch 
+                    checked={isVegOnly} 
+                    onCheckedChange={setIsVegOnly}
+                    className="data-[state=checked]:bg-green-600"
+                  />
+                </div>
+
+                {/* Sorting Options */}
+                <div className="space-y-4">
+                  <Label className="text-base font-bold">Sort By</Label>
+                  <RadioGroup value={sortBy} onValueChange={setSortBy} className="grid grid-cols-1 gap-3">
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${sortBy === 'default' ? 'border-orange-600 bg-orange-50' : 'border-gray-100'}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="default" id="default" className="sr-only" />
+                        <Label htmlFor="default" className="font-medium cursor-pointer">Relevance (Default)</Label>
+                      </div>
+                      {sortBy === 'default' && <Check size={18} className="text-orange-600" />}
+                    </div>
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${sortBy === 'rating' ? 'border-orange-600 bg-orange-50' : 'border-gray-100'}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="rating" id="rating" className="sr-only" />
+                        <Label htmlFor="rating" className="font-medium cursor-pointer">Top Rated</Label>
+                      </div>
+                      {sortBy === 'rating' && <Check size={18} className="text-orange-600" />}
+                    </div>
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${sortBy === 'price-low' ? 'border-orange-600 bg-orange-50' : 'border-gray-100'}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="price-low" id="price-low" className="sr-only" />
+                        <Label htmlFor="price-low" className="font-medium cursor-pointer">Price: Low to High</Label>
+                      </div>
+                      {sortBy === 'price-low' && <Check size={18} className="text-orange-600" />}
+                    </div>
+                    <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${sortBy === 'price-high' ? 'border-orange-600 bg-orange-50' : 'border-gray-100'}`}>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="price-high" id="price-high" className="sr-only" />
+                        <Label htmlFor="price-high" className="font-medium cursor-pointer">Price: High to Low</Label>
+                      </div>
+                      {sortBy === 'price-high' && <Check size={18} className="text-orange-600" />}
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <SheetFooter className="pt-4">
+                <SheetClose asChild>
+                  <Button className="w-full bg-orange-600 hover:bg-orange-700 h-12 rounded-xl font-bold text-lg">
+                    Apply Filters
+                  </Button>
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </div>
 
         {/* Categories */}
         <div className="mt-8 px-4">
           <h2 className="text-lg font-bold mb-4">Categories</h2>
           <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-2">
-            {/* "All" Category Button */}
             <button 
               onClick={() => setSelectedCategory('All')}
               className="flex flex-col items-center space-y-2 min-w-[70px] outline-none"
@@ -82,7 +190,6 @@ const Index = () => {
               <span className={`text-xs font-bold ${selectedCategory === 'All' ? 'text-orange-600' : 'text-gray-500'}`}>All</span>
             </button>
 
-            {/* Dynamic Categories from Firestore */}
             {categories.map((cat) => (
               <button 
                 key={cat.id} 
@@ -108,11 +215,20 @@ const Index = () => {
             <h2 className="text-lg font-bold">
               {search ? `Results for "${search}"` : selectedCategory === 'All' ? 'Popular Dishes' : selectedCategory}
             </h2>
-            <span className="text-xs text-gray-400 font-bold">{filteredProducts.length} Items</span>
+            <div className="flex items-center space-x-2">
+              {isVegOnly && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">Veg Only</span>}
+              <span className="text-xs text-gray-400 font-bold">{filteredProducts.length} Items</span>
+            </div>
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">No products found in this category.</div>
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Search size={32} className="text-gray-300" />
+              </div>
+              <p className="text-gray-500 font-medium">No dishes found matching your filters.</p>
+              <Button variant="link" onClick={resetFilters} className="text-orange-600 mt-2">Clear all filters</Button>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               {filteredProducts.map((product) => (
