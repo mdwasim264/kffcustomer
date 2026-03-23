@@ -112,13 +112,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Fetch Products (Real-time)
     const unsubscribeProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      console.log("Products Loaded:", items.length);
       setProducts(items);
     });
 
-    // Fetch Categories (Real-time)
+    // Fetch Categories (Real-time) - Trying both 'categories' and 'Categories'
     const unsubscribeCategories = onSnapshot(collection(db, "categories"), (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-      setCategories(items);
+      if (!snapshot.empty) {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+        console.log("Categories Loaded (lowercase):", items.length, items);
+        setCategories(items);
+      } else {
+        // If empty, try uppercase 'Categories'
+        getDocs(collection(db, "Categories")).then(snap => {
+          if (!snap.empty) {
+            const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+            console.log("Categories Loaded (Uppercase):", items.length, items);
+            setCategories(items);
+          } else {
+            console.log("No categories found in either 'categories' or 'Categories' collection.");
+          }
+        });
+      }
     });
 
     return () => {
@@ -128,7 +143,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // 2. User Specific Data (Cart, Favorites, Orders, Addresses)
+  // 2. User Specific Data
   useEffect(() => {
     if (!user) {
       setCart([]);
@@ -142,8 +157,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       const sortedOrders = fetchedOrders.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
+        // Handle both Timestamp and Number for createdAt
+        const dateA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (typeof a.createdAt === 'number' ? a.createdAt : 0);
+        const dateB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (typeof b.createdAt === 'number' ? b.createdAt : 0);
         return dateB - dateA;
       });
       setOrders(sortedOrders);
@@ -242,7 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'Pending',
         address: orderType === 'delivery' ? selectedAddress : null,
         date: new Date().toLocaleString(),
-        createdAt: new Date(),
+        createdAt: Date.now(), // Using number for consistency
       };
       const docRef = await addDoc(collection(db, "orders"), orderData);
       await updateUserData({ cart: [] });
