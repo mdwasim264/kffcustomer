@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
 import Index from "./pages/Index";
 import Cart from "./pages/Cart";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/layout/BottomNav";
 
@@ -23,7 +24,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/orders" element={<div className="p-4">Orders Page (Coming Soon)</div>} />
-              <Route path="/profile" element={<div className="p-4">Profile Page (Coming Soon)</div>} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
