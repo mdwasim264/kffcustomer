@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Cart from "./pages/Cart";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
+import Favorites from "./pages/Favorites";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/layout/BottomNav";
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/favorites" element={<Favorites />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
