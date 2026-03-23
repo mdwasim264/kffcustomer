@@ -1,6 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { auth, googleProvider } from '@/lib/firebase';
+import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -42,12 +45,16 @@ interface Order {
 }
 
 interface AppContextType {
+  user: User | null;
+  loading: boolean;
   cart: CartItem[];
   favorites: string[];
   addresses: Address[];
   selectedAddress: Address | null;
   orderType: OrderType;
   orders: Order[];
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
@@ -63,12 +70,41 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddressState] = useState<Address | null>(null);
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const login = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      toast.success("Logged in successfully!");
+    } catch (error) {
+      toast.error("Login failed!");
+      console.error(error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      toast.success("Logged out!");
+    } catch (error) {
+      toast.error("Logout failed!");
+    }
+  };
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -129,8 +165,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{ 
-      cart, favorites, addresses, selectedAddress, orderType, orders,
-      addToCart, removeFromCart, updateQuantity, toggleFavorite, 
+      user, loading, cart, favorites, addresses, selectedAddress, orderType, orders,
+      login, logout, addToCart, removeFromCart, updateQuantity, toggleFavorite, 
       setOrderType, addAddress, setSelectedAddress, placeOrder,
       totalAmount, deliveryCharge 
     }}>
