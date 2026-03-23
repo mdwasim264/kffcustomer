@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Package, Clock, MapPin, ChevronRight, Phone, User, CheckCircle2, Truck } from 'lucide-react';
+import { Package, Clock, MapPin, Phone, User, CheckCircle2, Truck } from 'lucide-react';
 import { useApp, OrderStatus } from '@/context/AppContext';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,12 +59,20 @@ const Orders = () => {
               </Badge>
             </div>
 
-            {/* Items List */}
-            <div className="space-y-2 py-2 border-y border-gray-50">
+            {/* Items List with Images */}
+            <div className="space-y-3 py-3 border-y border-gray-50">
               {order.items.map((item, i) => (
-                <div key={i} className="flex justify-between text-xs">
-                  <span className="text-gray-600">{item.quantity}x {item.name}</span>
-                  <span className="font-bold">₹{item.price * item.quantity}</span>
+                <div key={i} className="flex items-center space-x-3">
+                  <img 
+                    src={item.image} 
+                    alt={item.name} 
+                    className="w-12 h-12 rounded-lg object-cover border border-gray-100" 
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-800">{item.name}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">{item.quantity} x ₹{item.price}</p>
+                  </div>
+                  <span className="font-black text-sm text-gray-900">₹{item.price * item.quantity}</span>
                 </div>
               ))}
             </div>
