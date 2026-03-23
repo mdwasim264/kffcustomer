@@ -3,11 +3,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db, rtdb, googleProvider } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth';
-import { ref, onValue, push, set, update, serverTimestamp } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { 
   doc, 
   onSnapshot, 
   setDoc, 
+  addDoc, 
+  collection,
+  query,
+  where,
+  updateDoc
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -27,6 +32,12 @@ export interface Category {
   id: string;
   name: string;
   image: string;
+}
+
+export interface Banner {
+  id: string;
+  image: string;
+  title?: string;
 }
 
 interface CartItem extends Product {
@@ -68,6 +79,7 @@ interface AppContextType {
   loading: boolean;
   products: Product[];
   categories: Category[];
+  banners: Banner[];
   cart: CartItem[];
   favorites: string[];
   addresses: Address[];
@@ -96,6 +108,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -104,6 +117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
+    // 1. Auth Listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -127,52 +141,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLoading(false);
     });
 
+    // 2. Categories from RTDB
     const categoriesRef = ref(rtdb, 'Categories');
     onValue(categoriesRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) setCategories(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+      if (data) {
+        setCategories(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+      }
     });
 
+    // 3. Products from RTDB
     const productsRef = ref(rtdb, 'Products');
     onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
-      if (data) setProducts(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+      if (data) {
+        setProducts(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+      }
+    });
+
+    // 4. Banners from RTDB
+    const bannersRef = ref(rtdb, 'Banners');
+    onValue(bannersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setBanners(Object.keys(data).map(key => ({ id: key, ...data[key] })));
+      }
     });
 
     return () => unsubscribeAuth();
   }, []);
 
-  // Order Fetching Logic from Realtime Database
+  // 5. Orders from Firestore (with in-memory sort to fix Index Error)
   useEffect(() => {
     if (!user) {
       setOrders([]);
       return;
     }
 
-    const ordersRef = ref(rtdb, 'Orders');
-    const unsubscribeOrders = onValue(ordersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const allOrders = Object.keys(data).map(key => ({ id: key, ...data[key] } as Order));
-        
-        let filteredOrders;
-        if (role === 'admin' || role === 'delivery') {
-          filteredOrders = allOrders;
-        } else {
-          filteredOrders = allOrders.filter(order => order.userId === user.uid);
-        }
+    let q;
+    if (role === 'admin' || role === 'delivery') {
+      q = query(collection(db, "orders"));
+    } else {
+      q = query(collection(db, "orders"), where("userId", "==", user.uid));
+    }
 
-        // Sort by createdAt descending
-        const sortedOrders = filteredOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        setOrders(sortedOrders);
-      } else {
-        setOrders([]);
-      }
+    const unsubscribeOrders = onSnapshot(q, (snapshot) => {
+      const fetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      const sortedOrders = fetchedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setOrders(sortedOrders);
     });
 
-    return () => unsubscribeOrders;
+    return () => unsubscribeOrders();
   }, [user, role]);
 
+  // 6. User Profile Data from Firestore
   useEffect(() => {
     if (!user) return;
     const unsubscribeProfile = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
@@ -245,9 +267,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const placeOrder = async () => {
     if (!user) return null;
     try {
-      const ordersRef = ref(rtdb, 'Orders');
-      const newOrderRef = push(ordersRef);
-      
       const orderData = {
         userId: user.uid,
         userName: user.displayName || 'Guest',
@@ -260,12 +279,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: new Date().toLocaleString(),
         createdAt: Date.now(),
       };
-
-      await set(newOrderRef, orderData);
+      const docRef = await addDoc(collection(db, "orders"), orderData);
       await updateUserData({ cart: [] });
-      return newOrderRef.key;
+      return docRef.id;
     } catch (error) {
-      console.error("Order Error:", error);
       toast.error("Failed to place order");
       return null;
     }
@@ -273,8 +290,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus, deliveryInfo?: any) => {
     try {
-      const orderRef = ref(rtdb, `Orders/${orderId}`);
-      await update(orderRef, { 
+      const orderRef = doc(db, "orders", orderId);
+      await updateDoc(orderRef, { 
         status,
         ...deliveryInfo
       });
@@ -286,7 +303,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{ 
-      user, role, loading, products, categories, cart, favorites, addresses, selectedAddress, orderType, orders,
+      user, role, loading, products, categories, banners, cart, favorites, addresses, selectedAddress, orderType, orders,
       login, logout, addToCart, updateQuantity, toggleFavorite, 
       setOrderType, addAddress, setSelectedAddress: setSelectedAddressState, placeOrder, updateOrderStatus,
       totalAmount, deliveryCharge 
