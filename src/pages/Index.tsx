@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed, Check, Tag } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Input } from '@/components/ui/input';
@@ -25,12 +25,25 @@ const Index = () => {
   const { products, categories, banners, addToCart, toggleFavorite, favorites, loading } = useApp();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [showSplash, setShowSplash] = useState(true);
+  
+  // Use sessionStorage to ensure splash only shows once per session
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !sessionStorage.getItem('splashShown');
+    }
+    return true;
+  });
+
   const navigate = useNavigate();
 
   // Filter States
   const [isVegOnly, setIsVegOnly] = useState(false);
   const [sortBy, setSortBy] = useState('default');
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+    sessionStorage.setItem('splashShown', 'true');
+  };
 
   const filteredProducts = useMemo(() => {
     let result = products.filter(product => {
@@ -62,7 +75,7 @@ const Index = () => {
 
   return (
     <>
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
       
       <div className="pb-24 bg-gray-50 min-h-screen">
         {/* Header */}
