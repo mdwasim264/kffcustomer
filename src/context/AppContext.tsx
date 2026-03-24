@@ -200,7 +200,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const data = docSnap.data();
         setCart(data.cart || []);
         setFavorites(data.favorites || []);
-        setAddresses(data.addresses || []);
+        const fetchedAddresses = data.addresses || [];
+        setAddresses(fetchedAddresses);
+        
+        // Auto-select logic: Remember the last selected address or pick the first one
+        const savedId = data.selectedAddressId;
+        if (savedId) {
+          const found = fetchedAddresses.find((a: Address) => a.id === savedId);
+          if (found) setSelectedAddressState(found);
+          else if (fetchedAddresses.length > 0) setSelectedAddressState(fetchedAddresses[0]);
+        } else if (fetchedAddresses.length > 0) {
+          setSelectedAddressState(fetchedAddresses[0]);
+        }
       }
     });
     return () => unsubscribeProfile();
@@ -255,8 +266,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addAddress = (address: Address) => {
     const newAddresses = [...addresses, address];
-    updateUserData({ addresses: newAddresses });
-    if (!selectedAddress) setSelectedAddressState(address);
+    updateUserData({ 
+      addresses: newAddresses,
+      selectedAddressId: address.id // Auto-select the newly added address
+    });
+    setSelectedAddressState(address);
   };
 
   const updateAddress = (updatedAddress: Address) => {
@@ -268,6 +282,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedAddressState(updatedAddress);
     }
     toast.success("Address updated!");
+  };
+
+  const setSelectedAddress = (address: Address) => {
+    setSelectedAddressState(address);
+    updateUserData({ selectedAddressId: address.id }); // Persist the selection
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -314,7 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{ 
       user, role, loading, products, categories, banners, cart, favorites, addresses, selectedAddress, orderType, orders,
       login, logout, addToCart, updateQuantity, toggleFavorite, 
-      setOrderType, addAddress, updateAddress, setSelectedAddress: setSelectedAddressState, placeOrder, updateOrderStatus,
+      setOrderType, addAddress, updateAddress, setSelectedAddress, placeOrder, updateOrderStatus,
       totalAmount, deliveryCharge 
     }}>
       {children}
