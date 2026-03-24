@@ -10,6 +10,7 @@ import AddressForm from '@/components/address/AddressForm';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { toast } from 'sonner';
 import { updateProfile } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const { user, login, logout, addresses, selectedAddress, setSelectedAddress } = useApp();
@@ -17,8 +18,10 @@ const Profile = () => {
   const [editingAddress, setEditingAddress] = useState<Address | undefined>(undefined);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const addressSectionRef = useRef<HTMLDivElement>(null);
 
-  const adminWhatsApp = "919903605771"; // Country code added for WhatsApp link
+  const adminWhatsApp = "919903605771"; 
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,6 +49,10 @@ const Profile = () => {
   const handleAddNew = () => {
     setEditingAddress(undefined);
     setIsAddressOpen(true);
+  };
+
+  const scrollToAddresses = () => {
+    addressSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -109,13 +116,19 @@ const Profile = () => {
       <div className="p-4 space-y-6">
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white">
+          <Card 
+            className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white cursor-pointer active:scale-95 transition-transform"
+            onClick={() => navigate('/orders')}
+          >
             <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
               <Package size={24} />
             </div>
             <span className="text-sm font-bold text-gray-700">My Orders</span>
           </Card>
-          <Card className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white">
+          <Card 
+            className="p-4 flex flex-col items-center justify-center space-y-2 border-none shadow-sm bg-white cursor-pointer active:scale-95 transition-transform"
+            onClick={scrollToAddresses}
+          >
             <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
               <MapPin size={24} />
             </div>
@@ -148,7 +161,7 @@ const Profile = () => {
         </div>
 
         {/* Addresses Section */}
-        <div className="space-y-3">
+        <div className="space-y-3" ref={addressSectionRef}>
           <div className="flex items-center justify-between px-1">
             <h2 className="font-black text-gray-800 text-lg">Saved Addresses</h2>
             <Button 
