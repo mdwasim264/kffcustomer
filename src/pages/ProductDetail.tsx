@@ -15,7 +15,6 @@ const ProductDetail = () => {
   
   const product = products.find(p => p.id === id);
 
-  // Recommended products (same category, excluding current)
   const recommendedProducts = useMemo(() => {
     if (!product) return [];
     return products
@@ -37,9 +36,9 @@ const ProductDetail = () => {
   };
 
   return (
-    <div className="pb-32 bg-white min-h-screen">
+    <div className="pb-48 bg-white min-h-screen">
       {/* Header Image & Actions */}
-      <div className="relative h-[45vh] w-full">
+      <div className="relative h-[40vh] w-full">
         <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent" />
         
@@ -83,31 +82,31 @@ const ProductDetail = () => {
           </Badge>
         </div>
 
-        <h1 className="text-3xl font-black text-gray-900 mb-3 leading-tight">{product.name}</h1>
+        <h1 className="text-2xl font-black text-gray-900 mb-3 leading-tight">{product.name}</h1>
         
-        <div className="flex items-center space-x-6 mb-8 py-4 border-y border-gray-50">
+        <div className="flex items-center space-x-6 mb-6 py-4 border-y border-gray-50">
           <div className="flex items-center space-x-2">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">
-              <Clock size={20} />
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+              <Clock size={18} />
             </div>
             <div>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider">Delivery</p>
-              <p className="text-sm font-bold">25-30 min</p>
+              <p className="text-xs font-bold">25-30 min</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="p-2.5 bg-green-50 text-green-600 rounded-2xl">
-              <ShieldCheck size={20} />
+            <div className="p-2 bg-green-50 text-green-600 rounded-xl">
+              <ShieldCheck size={18} />
             </div>
             <div>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-wider">Quality</p>
-              <p className="text-sm font-bold">100% Fresh</p>
+              <p className="text-xs font-bold">100% Fresh</p>
             </div>
           </div>
         </div>
 
-        <div className="mb-10">
-          <h2 className="text-lg font-black text-gray-900 mb-2">Description</h2>
+        <div className="mb-8">
+          <h2 className="text-base font-black text-gray-900 mb-2">Description</h2>
           <p className="text-gray-500 text-sm leading-relaxed">
             {product.description || 'Experience the authentic taste of Kolkatta with our specially prepared dishes. Made with fresh ingredients and traditional spices to give you a burst of flavor in every bite.'}
           </p>
@@ -116,20 +115,20 @@ const ProductDetail = () => {
         {/* Recommended Section */}
         {recommendedProducts.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-lg font-black text-gray-900 mb-4">Recommended for You</h2>
+            <h2 className="text-base font-black text-gray-900 mb-4">Recommended for You</h2>
             <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-4">
               {recommendedProducts.map((item) => (
                 <Card 
                   key={item.id} 
-                  className="min-w-[160px] p-2 border-none shadow-sm bg-gray-50 rounded-2xl cursor-pointer"
+                  className="min-w-[140px] p-2 border-none shadow-sm bg-gray-50 rounded-2xl cursor-pointer"
                   onClick={() => {
                     navigate(`/product/${item.id}`);
                     window.scrollTo(0, 0);
                   }}
                 >
-                  <img src={item.image} alt={item.name} className="w-full h-28 object-cover rounded-xl mb-2" />
-                  <h3 className="text-xs font-bold truncate px-1">{item.name}</h3>
-                  <p className="text-orange-600 font-black text-sm px-1">₹{item.price}</p>
+                  <img src={item.image} alt={item.name} className="w-full h-24 object-cover rounded-xl mb-2" />
+                  <h3 className="text-[10px] font-bold truncate px-1">{item.name}</h3>
+                  <p className="text-orange-600 font-black text-xs px-1">₹{item.price}</p>
                 </Card>
               ))}
             </div>
@@ -137,20 +136,20 @@ const ProductDetail = () => {
         )}
       </div>
 
-      {/* Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex items-center justify-between z-50 max-w-md mx-auto rounded-t-[32px]">
+      {/* Bottom Bar - Adjusted to be above BottomNav */}
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-gray-100 flex items-center justify-between z-40 max-w-md mx-auto rounded-t-[24px] shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
         <div className="flex flex-col">
           <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Total Price</p>
-          <p className="text-3xl font-black text-orange-600">₹{product.price}</p>
+          <p className="text-2xl font-black text-orange-600">₹{product.price}</p>
         </div>
         <Button 
-          className="bg-orange-600 hover:bg-orange-700 h-16 px-10 rounded-[24px] font-black text-lg shadow-2xl shadow-orange-200 active:scale-95 transition-all"
+          className="bg-orange-600 hover:bg-orange-700 h-14 px-8 rounded-2xl font-black text-base shadow-lg shadow-orange-200 active:scale-95 transition-all"
           onClick={() => {
             addToCart(product);
             navigate('/cart');
           }}
         >
-          <ShoppingCart className="mr-2" size={22} /> Add to Cart
+          <ShoppingCart className="mr-2" size={20} /> Add to Cart
         </Button>
       </div>
     </div>
