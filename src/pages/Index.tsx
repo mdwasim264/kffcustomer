@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed, Check } from 'lucide-react';
+import { Search, Filter, Heart, Star, X, Loader2, UtensilsCrossed, Check, Tag } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -266,15 +266,24 @@ const Index = () => {
                     <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="p-3">
-                    <div className="flex items-center space-x-1 mb-1">
-                      <div className={`w-3 h-3 border flex items-center justify-center ${product.isVeg ? 'border-green-600' : 'border-red-600'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${product.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center space-x-1">
+                        <div className={`w-3 h-3 border flex items-center justify-center ${product.isVeg ? 'border-green-600' : 'border-red-600'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${product.isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                        </div>
+                        <span className="text-[10px] text-gray-400 flex items-center">
+                          <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating || '4.5'}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-gray-400 flex items-center">
-                        <Star size={10} className="fill-yellow-400 text-yellow-400 mr-0.5" /> {product.rating || '4.5'}
-                      </span>
                     </div>
+                    
+                    {/* Category Name */}
+                    <div className="flex items-center text-[9px] font-bold text-orange-500 uppercase tracking-wider mb-0.5">
+                      <Tag size={8} className="mr-1" /> {product.category}
+                    </div>
+                    
                     <h3 className="font-bold text-sm truncate cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
+                    
                     <div className="flex items-center justify-between mt-2">
                       <span className="font-black text-orange-600">₹{product.price}</span>
                       <Button 
